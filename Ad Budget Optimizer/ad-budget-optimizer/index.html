@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ad Budget Optimizer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --dp:        #1B8F6A;
+      --dp-light:  #5DCAA5;
+      --dp-bg:     #E3F6EF;
+      --dp-text:   #0A5540;
+      --dp-border: #A8DECE;
+      --gr:        #C37B10;
+      --gr-light:  #EEB348;
+      --gr-bg:     #FEF3DC;
+      --gr-text:   #7A4F0A;
+      --gr-border: #F0CEAA;
+      --border:    #E5E3DB;
+      --bg:        #F8F6F1;
+      --bg2:       #FFFFFF;
+      --bg3:       #F2F0EB;
+      --text:      #1A1917;
+      --text2:     #6B6860;
+      --text3:     #9B9890;
+      --radius:    10px;
+      --shadow:    0 1px 4px rgba(0,0,0,0.07);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.10);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; font-size: 14px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 1rem 1.75rem; display: flex; align-items: center; gap: 1rem;
+    }
+    .header-icon {
+      width: 36px; height: 36px; background: var(--dp); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 18px; flex-shrink: 0;
+    }
+    .header-title { font-size: 1rem; font-weight: 600; }
+
+    /* Layout */
+    .main { max-width: 1240px; margin: 0 auto; padding: 1.5rem; }
+    .section { margin-bottom: 1.5rem; }
+    .section-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text2); margin-bottom: 0.65rem;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Controls */
+    .controls {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.9rem 1.25rem;
+      display: flex; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap;
+      box-shadow: var(--shadow);
+    }
+    .ctrl-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ctrl-group-budget { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .ctrl-row { display: flex; align-items: center; gap: 8px; }
+    .ctrl-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+    .ctrl-val   { font-size: 13px; font-weight: 600; min-width: 52px; color: var(--text); }
+    input[type="range"] { accent-color: var(--dp); cursor: pointer; }
+    .budget-presets { display: flex; gap: 5px; flex-wrap: wrap; }
+    .preset-btn {
+      padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 12px;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--bg3); color: var(--text2);
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .preset-btn:hover { background: var(--dp-bg); color: var(--dp-text); border-color: var(--dp-border); }
+    .preset-active { background: var(--dp) !important; color: #fff !important; border-color: var(--dp) !important; }
+    .run-btn {
+      padding: 7px 18px; font-size: 12px; font-weight: 600; border-radius: 8px;
+      cursor: pointer; background: var(--dp); color: #fff; border: none;
+      transition: opacity .15s, transform .1s; align-self: center; margin-left: auto;
+    }
+    .run-btn:hover  { opacity: .88; }
+    .run-btn:active { transform: scale(.97); }
+
+    /* Metric Cards */
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.9rem 1rem; box-shadow: var(--shadow);
+    }
+    .metric-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text2); margin-bottom: 5px; }
+    .metric-value { font-size: 1.65rem; font-weight: 500; line-height: 1; }
+    .metric-sub   { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+    /* Algorithm Efficiency */
+    .algo-wrap {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.15rem 1.35rem; box-shadow: var(--shadow);
+    }
+    .algo-summary-strip {
+      display: grid; grid-template-columns: 1fr 72px 1fr;
+      gap: 14px; align-items: center; margin-bottom: 14px;
+    }
+    .algo-summary-item { border-radius: 8px; padding: 1rem 1.1rem; }
+    .algo-summary-dp { background: var(--dp-bg); border: 1px solid var(--dp-border); }
+    .algo-summary-gr { background: var(--gr-bg); border: 1px solid var(--gr-border); }
+    .algo-summary-name { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+    .algo-summary-dp .algo-summary-name { color: var(--dp-text); }
+    .algo-summary-gr .algo-summary-name { color: var(--gr-text); }
+    .algo-summary-big { font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
+    .algo-summary-dp .algo-summary-big { color: var(--dp); }
+    .algo-summary-gr .algo-summary-big { color: var(--gr); }
+    .algo-summary-sub { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+    .algo-summary-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 10px; font-weight: 600;
+    }
+    .tag-dp { background: rgba(27,143,106,.15); color: var(--dp-text); }
+    .tag-gr { background: rgba(195,123,16,.15); color: var(--gr-text); }
+    .algo-vs-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .vs-circle {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: var(--bg3); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--text2);
+    }
+    .vs-label { font-size: 11px; font-weight: 700; text-align: center; }
+    .dp-win   { color: var(--dp); }
+    .tie-label { color: var(--text2); }
+    .vs-speed { font-size: 10px; color: var(--text3); text-align: center; }
+    .algo-explain {
+      padding-top: 12px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--text2); line-height: 1.65;
+    }
+    .algo-explain strong { color: var(--text); }
+
+    /* Compare Cards */
+    .compare-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.15rem; box-shadow: var(--shadow);
+    }
+    .compare-card-dp { border-top: 3px solid var(--dp); }
+    .compare-card-gr { border-top: 3px solid var(--gr); }
+    .compare-h3 { font-size: 12px; font-weight: 700; margin-bottom: 9px; }
+    .compare-h3-dp { color: var(--dp-text); }
+    .compare-h3-gr { color: var(--gr-text); }
+    .pills-wrap { display: flex; flex-wrap: wrap; gap: 4px; min-height: 26px; }
+    .pill { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+    .pill-dp { background: var(--dp-bg); color: var(--dp-text); }
+    .pill-gr { background: var(--gr-bg); color: var(--gr-text); }
+    .compare-foot { margin-top: 9px; font-size: 11px; color: var(--text2); }
+    .compare-foot span { font-weight: 600; color: var(--text); }
+
+    /* Ad Editor */
+    .editor-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+    .toggle-btn {
+      padding: 5px 13px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg2); color: var(--text);
+      transition: background .15s, color .15s;
+    }
+    .toggle-btn.on  { background: var(--dp); color: #fff; border-color: var(--dp); }
+    .toggle-btn:hover:not(.on) { background: var(--bg3); }
+    .reset-btn {
+      padding: 5px 12px; font-size: 11px; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg3); color: var(--text2);
+    }
+    .reset-btn:hover { background: var(--bg); }
+    .ed-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    }
+    .ed-wrap { overflow-x: auto; }
+    .ed-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ed-table th {
+      padding: 7px 10px; text-align: left; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em; color: var(--text2);
+      background: var(--bg3); border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .ed-table td { padding: 5px 7px; border-bottom: 1px solid var(--border); }
+    .ed-table tr:last-child td { border-bottom: none; }
+    .ed-input {
+      width: 100%; padding: 4px 7px; border: 1px solid var(--border);
+      border-radius: 5px; font-size: 12px; background: var(--bg2);
+      color: var(--text); outline: none; transition: border-color .15s;
+    }
+    .ed-input:focus { border-color: var(--dp); }
+    .ed-select {
+      padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px;
+      font-size: 12px; background: var(--bg2); color: var(--text); outline: none; cursor: pointer;
+    }
+    .ed-select:focus { border-color: var(--dp); }
+    .ed-num { color: var(--text3); font-size: 11px; font-weight: 500; margin-left: 4px; }
+
+    /* Charts */
+    .chart-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.15rem; box-shadow: var(--shadow);
+    }
+    .chart-wrap-tall { position: relative; height: 260px; }
+    .chart-wrap-med  { position: relative; height: 210px; }
+    .chart-legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+    .legend-box  { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+    .legend-dot  { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Inventory Table */
+    .tbl-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    }
+    .tbl-wrap { overflow-x: auto; }
+    .inv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .inv-table th {
+      padding: 8px 11px; text-align: left; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em; color: var(--text2);
+      background: var(--bg3); border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .inv-table td  { padding: 7px 11px; border-bottom: 1px solid var(--border); }
+    .inv-table tr:last-child td { border-bottom: none; }
+    .inv-table tr:hover td { background: #FAFAF8; }
+    .tbadge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .tbadge-dp { background: var(--dp-bg); color: var(--dp-text); }
+    .tbadge-gr { background: var(--gr-bg); color: var(--gr-text); }
+    .tbadge-no { background: #F2F0EB; color: #7A7770; }
+
+    /* DP Table */
+    .dp-outer { overflow: auto; max-height: 300px; }
+    .dp-table { border-collapse: collapse; font-size: 11px; }
+    .dp-table th, .dp-table td {
+      padding: 4px 8px; border: 0.5px solid var(--border);
+      text-align: center; min-width: 44px; white-space: nowrap;
+    }
+    .dp-table th { background: var(--bg3); font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    .dp-table .row-head { text-align: left; padding-left: 10px; position: sticky; left: 0; background: var(--bg3); font-weight: 500; z-index: 2; }
+    .dp-table .cell-trace { background: #EEF0FE; color: #3730A3; font-weight: 600; }
+    .dp-table .cell-max   { background: var(--dp-bg); color: var(--dp-text); font-weight: 700; }
+    .dp-note { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+
+    /* Footer */
+    .footer {
+      text-align: center; padding: 1.5rem; font-size: 11px; color: var(--text3);
+      border-top: 1px solid var(--border); margin-top: 2rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .metric-grid        { grid-template-columns: repeat(2, 1fr); }
+      .two-col            { grid-template-columns: 1fr; }
+      .algo-summary-strip { grid-template-columns: 1fr; }
+      .algo-vs-col        { display: none; }
+    }
+    @media (max-width: 600px) {
+      .main { padding: 1rem; }
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .run-btn  { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+/* ═══════════════════════════════════════════════════════════════
+   CONSTANTS
+   ═══════════════════════════════════════════════════════════════ */
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+const PLATFORMS = ['Instagram','Facebook','YouTube','TikTok','Google','X (Twitter)','LinkedIn','Pinterest'];
+const AD_TYPES  = ['Banner','Video','Story','Carousel','Search','Display','Reel','Sponsored'];
+const METRICS   = ['Clicks','Impressions','Conversions','Views','Reach'];
+
+const BUDGET_PRESETS = [
+  { label: '₹50K',  value: 50   },
+  { label: '₹1L',   value: 100  },
+  { label: '₹2L',   value: 200  },
+  { label: '₹5L',   value: 500  },
+  { label: '₹10L',  value: 1000 },
+  { label: '₹20L',  value: 2000 },
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+function seededRand(seed) {
+  let s = (seed * 1664525 + 1013904223) >>> 0;
+  return () => { s = ((s * 1664525 + 1013904223)) >>> 0; return s / 0xFFFFFFFF; };
+}
+
+/** Format K-units (1 unit = ₹1,000) → ₹50K / ₹1.5L / ₹10Cr */
+function fmtINR(k) {
+  if (!k && k !== 0) return '₹0';
+  const r = k * 1000;
+  if (r >= 10000000) return `₹${(r/10000000).toFixed(1)}Cr`;
+  if (r >= 100000)   return `₹${r%100000===0 ? r/100000 : (r/100000).toFixed(1)}L`;
+  return `₹${r%1000===0 ? r/1000 : (r/1000).toFixed(0)}K`;
+}
+
+function fmtEng(n) {
+  if (n >= 100000) return `${(n/100000).toFixed(1)}L`;
+  if (n >= 1000)   return `${(n/1000).toFixed(1)}K`;
+  return String(n);
+}
+
+function genAds(n, seed) {
+  const r = seededRand(seed);
+  return Array.from({length: n}, (_, i) => {
+    const cost       = (Math.floor(r() * 19) + 1) * 5;
+    const engagement = Math.floor(r() * 8000) + 2000;
+    return {
+      id:         i + 1,
+      name:       AD_TYPES[i % AD_TYPES.length] + ' ' + (i + 1),
+      platform:   PLATFORMS[Math.floor(r() * PLATFORMS.length)],
+      cost,
+      engagement,
+      metric:     METRICS[Math.floor(r() * METRICS.length)],
+    };
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ALGORITHMS  —  JavaScript port of backend/knapsack.c
+   ═══════════════════════════════════════════════════════════════ */
+
+/** 0-1 Knapsack DP — O(n×W) — guaranteed optimal */
+function knapsackDP(ads, budget) {
+  const n = ads.length, W = budget;
+  const dp = Array.from({length: n+1}, () => new Array(W+1).fill(0));
+  let ops = 0;
+  for (let i = 1; i <= n; i++) {
+    const { cost, engagement } = ads[i-1];
+    for (let w = 0; w <= W; w++) {
+      ops++;
+      dp[i][w] = dp[i-1][w];
+      if (cost <= w) {
+        const take = dp[i-1][w-cost] + engagement;
+        if (take > dp[i][w]) dp[i][w] = take;
+      }
+    }
+  }
+  const selected = new Set(), traceSet = new Set();
+  let w = W;
+  for (let i = n; i >= 1; i--) {
+    if (dp[i][w] !== dp[i-1][w]) {
+      selected.add(ads[i-1].id);
+      traceSet.add(`${i}-${w}`);
+      w -= ads[i-1].cost;
+    }
+    traceSet.add(`${i}-${w}`);
+  }
+  const totalCost = [...selected].reduce((s, id) => s + ads.find(a => a.id === id).cost, 0);
+  return { maxVal: dp[n][W], selected, dp, traceSet, totalCost, ops };
+}
+
+/** Greedy (ratio sort) — O(n log n) — NOT guaranteed optimal for 0-1 */
+function knapsackGreedy(ads, budget) {
+  const n = ads.length;
+  const sorted = [...ads].sort((a, b) => (b.engagement/b.cost) - (a.engagement/a.cost));
+  let rem = budget, total = 0;
+  const selected = new Set();
+  const ops = Math.ceil(n * Math.log2(n+1)) + n;
+  for (const ad of sorted) {
+    if (ad.cost <= rem) { selected.add(ad.id); rem -= ad.cost; total += ad.engagement; }
+  }
+  const totalCost = [...selected].reduce((s, id) => s + ads.find(a => a.id === id).cost, 0);
+  return { maxVal: total, selected, totalCost, ops };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════════════════ */
+
+function Header() {
+  return (
+    <header className="header">
+      <div className="header-icon">📊</div>
+      <div>
+        <div className="header-title">Ad Budget Optimizer — INR</div>
+      </div>
+    </header>
+  );
+}
+
+function Controls({ numAds, setNumAds, budget, setBudget, seed, setSeed, onRun }) {
+  return (
+    <div className="controls">
+      <div className="ctrl-group">
+        <span className="ctrl-label">Ads</span>
+        <input type="range" min="5" max="20" value={numAds} step="1"
+               onChange={e => setNumAds(+e.target.value)} style={{width:80}} />
+        <span className="ctrl-val">{numAds}</span>
+      </div>
+
+      <div className="ctrl-group ctrl-group-budget">
+        <div className="ctrl-row">
+          <span className="ctrl-label">Budget</span>
+          <input type="range" min="50" max="2000" value={budget} step="10"
+                 onChange={e => setBudget(+e.target.value)} style={{width:110}} />
+          <span className="ctrl-val">{fmtINR(budget)}</span>
+        </div>
+        <div className="budget-presets">
+          {BUDGET_PRESETS.map(p => (
+            <button key={p.value}
+                    className={`preset-btn${budget === p.value ? ' preset-active' : ''}`}
+                    onClick={() => setBudget(p.value)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ctrl-group">
+        <span className="ctrl-label">Seed</span>
+        <input type="range" min="1" max="99" value={seed} step="1"
+               onChange={e => setSeed(+e.target.value)} style={{width:70}} />
+        <span className="ctrl-val">{seed}</span>
+      </div>
+      <button className="run-btn" onClick={onRun}>Regenerate ↗</button>
+    </div>
+  );
+}
+
+function MetricGrid({ budget, dpResult, grResult }) {
+  if (!dpResult || !grResult) return null;
+  const pct  = grResult.maxVal > 0 ? ((dpResult.maxVal - grResult.maxVal) / grResult.maxVal * 100) : 0;
+  const gain = dpResult.maxVal - grResult.maxVal;
+  return (
+    <div className="metric-grid">
+      <div className="metric-card">
+        <div className="metric-label">Budget</div>
+        <div className="metric-value">{fmtINR(budget)}</div>
+        <div className="metric-sub">Total campaign budget</div>
+      </div>
+      <div className="metric-card">
+        <div className="metric-label">DP Engagement</div>
+        <div className="metric-value" style={{color:'#1B8F6A'}}>{fmtEng(dpResult.maxVal)}</div>
+        <div className="metric-sub">{dpResult.selected.size} ads · {fmtINR(dpResult.totalCost)} used</div>
+      </div>
+      <div className="metric-card">
+        <div className="metric-label">Greedy Engagement</div>
+        <div className="metric-value" style={{color:'#C37B10'}}>{fmtEng(grResult.maxVal)}</div>
+        <div className="metric-sub">{grResult.selected.size} ads · {fmtINR(grResult.totalCost)} used</div>
+      </div>
+      <div className="metric-card">
+        <div className="metric-label">DP Advantage</div>
+        <div className="metric-value" style={{color: pct>0 ? '#1B8F6A' : '#888'}}>
+          {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
+        </div>
+        <div className="metric-sub">
+          {pct === 0 ? 'Algorithms tied this run' : `DP gained ${fmtEng(gain)} more engagement`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AlgorithmEfficiency({ dpResult, grResult, numAds, budget }) {
+  if (!dpResult || !grResult) return null;
+  const diff       = dpResult.maxVal - grResult.maxVal;
+  const pct        = grResult.maxVal > 0 ? ((diff / grResult.maxVal) * 100).toFixed(1) : '0';
+  const speedRatio = (dpResult.ops / Math.max(grResult.ops, 1)).toFixed(0);
+  const dpWins     = diff > 0;
+
+  return (
+    <div className="algo-wrap">
+      <div className="section-title">Algorithm Efficiency Comparison</div>
+      <div className="algo-summary-strip">
+        <div className="algo-summary-item algo-summary-dp">
+          <div className="algo-summary-name">Dynamic Programming</div>
+          <div className="algo-summary-big">{fmtEng(dpResult.maxVal)}</div>
+          <div className="algo-summary-sub">engagement</div>
+          <span className="algo-summary-tag tag-dp">✓ Optimal · O(n×W)</span>
+        </div>
+        <div className="algo-vs-col">
+          <div className="vs-circle">VS</div>
+          {dpWins
+            ? <div className="vs-label dp-win">DP +{pct}%</div>
+            : <div className="vs-label tie-label">Tied!</div>
+          }
+          <div className="vs-speed">{speedRatio}× slower ops</div>
+        </div>
+        <div className="algo-summary-item algo-summary-gr">
+          <div className="algo-summary-name">Greedy Heuristic</div>
+          <div className="algo-summary-big">{fmtEng(grResult.maxVal)}</div>
+          <div className="algo-summary-sub">engagement</div>
+          <span className="algo-summary-tag tag-gr">⚡ Fast · O(n log n)</span>
+        </div>
+      </div>
+      <div className="algo-explain">
+        {dpWins ? (
+          <>
+            <strong>Why DP wins:</strong> Greedy picks ads with the best engagement-per-rupee ratio,
+            but this can block better combinations. DP tests every possible combination ({dpResult.ops.toLocaleString()} sub-problems)
+            and guarantees the best answer — at the cost of being <strong>{speedRatio}× more operations</strong>.
+            Here it found <strong>+{pct}% more engagement</strong> ({fmtEng(diff)} extra) for the same {fmtINR(budget)} budget.
+          </>
+        ) : (
+          <>
+            <strong>Greedy matched DP this time!</strong> With this particular mix of costs and engagements,
+            the greedy selection happened to pick the same ads as the optimal DP solution.
+            Change the seed or budget to see them diverge. Greedy was still <strong>{speedRatio}× fewer operations</strong>.
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompareCards({ ads, budget, dpResult, grResult }) {
+  if (!dpResult || !grResult) return null;
+  const dpList = [...dpResult.selected].map(id => ads.find(a => a.id === id)).filter(Boolean);
+  const grList = [...grResult.selected].map(id => ads.find(a => a.id === id)).filter(Boolean);
+  return (
+    <div className="two-col">
+      <div className="compare-card compare-card-dp">
+        <div className="compare-h3 compare-h3-dp">DP — Optimal Selection</div>
+        <div className="pills-wrap">
+          {dpList.map(ad => (
+            <span key={ad.id} className="pill pill-dp"
+                  title={`${fmtEng(ad.engagement)} ${ad.metric} · ${ad.platform}`}>
+              {ad.name} ({fmtINR(ad.cost)})
+            </span>
+          ))}
+          {dpList.length === 0 && <span style={{fontSize:11,color:'var(--text3)'}}>No ads fit the budget</span>}
+        </div>
+        <div className="compare-foot">
+          Budget used: <span>{fmtINR(dpResult.totalCost)}</span> of <span>{fmtINR(budget)}</span>
+          &nbsp;·&nbsp;<span>{dpList.length} ads</span>
+        </div>
+      </div>
+      <div className="compare-card compare-card-gr">
+        <div className="compare-h3 compare-h3-gr">Greedy — Heuristic Selection</div>
+        <div className="pills-wrap">
+          {grList.map(ad => (
+            <span key={ad.id} className="pill pill-gr"
+                  title={`${fmtEng(ad.engagement)} ${ad.metric} · ${ad.platform}`}>
+              {ad.name} ({fmtINR(ad.cost)})
+            </span>
+          ))}
+          {grList.length === 0 && <span style={{fontSize:11,color:'var(--text3)'}}>No ads fit the budget</span>}
+        </div>
+        <div className="compare-foot">
+          Budget used: <span>{fmtINR(grResult.totalCost)}</span> of <span>{fmtINR(budget)}</span>
+          &nbsp;·&nbsp;<span>{grList.length} ads</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdEditor({ ads, onAdsChange, onReset }) {
+  const [open, setOpen] = useState(false);
+  const update = (id, field, raw) => {
+    const val = (field === 'cost' || field === 'engagement') ? Math.max(1, +raw) : raw;
+    onAdsChange(ads.map(ad => ad.id === id ? {...ad, [field]: val} : ad));
+  };
+  return (
+    <div className="section">
+      <div className="editor-topbar">
+        <span className="section-title" style={{margin:0}}>Ad Inventory Editor</span>
+        <div style={{display:'flex',gap:8}}>
+          {open && <button className="reset-btn" onClick={onReset}>↺ Reset to Generated</button>}
+          <button className={`toggle-btn${open?' on':''}`} onClick={() => setOpen(v => !v)}>
+            {open ? '✕ Close Editor' : '✏ Edit Ads'}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="ed-card">
+          <div className="ed-wrap">
+            <table className="ed-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Ad Name</th><th>Platform</th>
+                  <th>Cost (₹K units)</th><th>Engagement</th><th>Metric</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ads.map(ad => (
+                  <tr key={ad.id}>
+                    <td style={{color:'var(--text3)',fontWeight:600,width:30}}>{ad.id}</td>
+                    <td style={{minWidth:130}}>
+                      <input className="ed-input" type="text" value={ad.name}
+                             onChange={e => update(ad.id, 'name', e.target.value)} />
+                    </td>
+                    <td style={{minWidth:110}}>
+                      <input className="ed-input" type="text" value={ad.platform}
+                             onChange={e => update(ad.id, 'platform', e.target.value)} />
+                    </td>
+                    <td style={{minWidth:160}}>
+                      <div style={{display:'flex',alignItems:'center'}}>
+                        <input className="ed-input" type="number" value={ad.cost}
+                               min="5" max="2000" step="5" style={{width:70}}
+                               onChange={e => update(ad.id, 'cost', e.target.value)} />
+                        <span className="ed-num">{fmtINR(ad.cost)}</span>
+                      </div>
+                    </td>
+                    <td style={{minWidth:120}}>
+                      <input className="ed-input" type="number" value={ad.engagement}
+                             min="100" max="200000" step="100" style={{width:90}}
+                             onChange={e => update(ad.id, 'engagement', e.target.value)} />
+                    </td>
+                    <td>
+                      <select className="ed-select" value={ad.metric}
+                              onChange={e => update(ad.id, 'metric', e.target.value)}>
+                        {METRICS.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Cost vs Engagement Chart (selection highlighted) ─── */
+function BarChart({ ads, dpResult, grResult }) {
+  const ref = useRef(null), inst = useRef(null);
+  useEffect(() => {
+    if (!ads.length || !dpResult || !grResult || !ref.current) return;
+    if (inst.current) { inst.current.destroy(); inst.current = null; }
+    const dpS = dpResult.selected, grS = grResult.selected;
+    const barColors  = ads.map(a => dpS.has(a.id) ? '#1B8F6A' : grS.has(a.id) ? '#C37B10' : 'rgba(180,177,168,0.30)');
+    const barBorders = ads.map(a => dpS.has(a.id) ? '#0D7050' : grS.has(a.id) ? '#9E5F00' : 'transparent');
+    const ptColors   = ads.map(a => (dpS.has(a.id)||grS.has(a.id)) ? 'rgba(99,89,220,0.9)' : 'rgba(160,155,210,0.20)');
+    const ptRadius   = ads.map(a => (dpS.has(a.id)||grS.has(a.id)) ? 6 : 2);
+    inst.current = new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels: ads.map(a => a.name),
+        datasets: [
+          { label:'Cost (₹K units)', data: ads.map(a=>a.cost), backgroundColor: barColors, borderColor: barBorders, borderWidth:1.5, borderRadius:4, yAxisID:'y', order:2 },
+          { label:'Engagement', data: ads.map(a=>a.engagement), type:'line', borderColor:'rgba(99,89,220,0.5)', backgroundColor: ptColors, pointBackgroundColor: ptColors, pointRadius: ptRadius, pointHoverRadius:8, tension:0.35, yAxisID:'y2', order:1 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: {
+          legend: { display:false },
+          tooltip: { callbacks: {
+            title: ctx => { const ad=ads[ctx[0].dataIndex]; const inDp=dpS.has(ad.id),inGr=grS.has(ad.id); return ad.name+(inDp&&inGr?' [DP+Greedy]':inDp?' [DP selected]':inGr?' [Greedy only]':''); },
+            label: ctx => { const ad=ads[ctx.dataIndex]; return ctx.datasetIndex===0 ? ` Cost: ${fmtINR(ad.cost)}` : ` ${ad.metric}: ${fmtEng(ad.engagement)}`; }
+          }}
+        },
+        scales: {
+          x:  { ticks:{font:{size:10},maxRotation:45,autoSkip:false}, grid:{display:false} },
+          y:  { title:{display:true,text:'Cost (₹K units)',font:{size:11}}, ticks:{callback:v=>fmtINR(v)} },
+          y2: { position:'right', title:{display:true,text:'Engagement',font:{size:11}}, grid:{drawOnChartArea:false}, ticks:{callback:v=>fmtEng(v)} }
+        }
+      }
+    });
+    return () => { if (inst.current) { inst.current.destroy(); inst.current = null; } };
+  }, [ads, dpResult, grResult]);
+  return (
+    <div className="chart-card">
+      <div className="section-title">Cost vs Engagement — Selected Ads Highlighted</div>
+      <div className="chart-wrap-tall"><canvas ref={ref} /></div>
+      <div className="chart-legend">
+        <div className="legend-item"><div className="legend-box" style={{background:'#1B8F6A'}} />DP Selected</div>
+        <div className="legend-item"><div className="legend-box" style={{background:'#C37B10'}} />Greedy Only</div>
+        <div className="legend-item"><div className="legend-box" style={{background:'rgba(180,177,168,0.4)'}} />Not Selected</div>
+        <div className="legend-item"><div className="legend-dot" style={{background:'#6359DC'}} />Engagement (highlighted when selected)</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Engagement Comparison Chart ─── */
+function EngagementChart({ dpResult, grResult }) {
+  const ref = useRef(null), inst = useRef(null);
+  useEffect(() => {
+    if (!dpResult || !grResult || !ref.current) return;
+    if (inst.current) { inst.current.destroy(); inst.current = null; }
+    inst.current = new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels: ['DP (Optimal)', 'Greedy'],
+        datasets: [{ label:'Total Engagement', data:[dpResult.maxVal, grResult.maxVal], backgroundColor:['#1B8F6A','#C37B10'], borderRadius:6, barThickness:60 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: { legend:{display:false}, tooltip:{callbacks:{label:ctx=>` Engagement: ${fmtEng(ctx.raw)}`}} },
+        scales: {
+          x: { ticks:{font:{size:13,weight:'600'}}, grid:{display:false} },
+          y: { beginAtZero:true, ticks:{callback:v=>fmtEng(v)} }
+        }
+      }
+    });
+    return () => { if (inst.current) { inst.current.destroy(); inst.current = null; } };
+  }, [dpResult, grResult]);
+  return (
+    <div className="chart-card">
+      <div className="section-title">Engagement Comparison: DP vs Greedy</div>
+      <div className="chart-wrap-med"><canvas ref={ref} /></div>
+    </div>
+  );
+}
+
+/* ── Budget Used Chart (separate) ─── */
+function BudgetChart({ dpResult, grResult, budget }) {
+  const ref = useRef(null), inst = useRef(null);
+  useEffect(() => {
+    if (!dpResult || !grResult || !ref.current) return;
+    if (inst.current) { inst.current.destroy(); inst.current = null; }
+    inst.current = new Chart(ref.current, {
+      type: 'bar',
+      data: {
+        labels: ['DP (Optimal)', 'Greedy'],
+        datasets: [
+          { label:'Budget Used', data:[dpResult.totalCost, grResult.totalCost], backgroundColor:['#1B8F6A','#C37B10'], borderRadius:4, stack:'budget' },
+          { label:'Remaining',   data:[budget-dpResult.totalCost, budget-grResult.totalCost], backgroundColor:['rgba(27,143,106,0.15)','rgba(195,123,16,0.15)'], borderRadius:4, stack:'budget' }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: { legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:14}}, tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtINR(ctx.raw)}`}} },
+        scales: {
+          x: { ticks:{font:{size:12,weight:'600'}}, grid:{display:false}, stacked:true },
+          y: { beginAtZero:true, stacked:true, ticks:{callback:v=>fmtINR(v)} }
+        }
+      }
+    });
+    return () => { if (inst.current) { inst.current.destroy(); inst.current = null; } };
+  }, [dpResult, grResult, budget]);
+  return (
+    <div className="chart-card">
+      <div className="section-title">Budget Used: DP vs Greedy</div>
+      <div className="chart-wrap-med"><canvas ref={ref} /></div>
+    </div>
+  );
+}
+
+/* ── Inventory Table ─── */
+function InventoryTable({ ads, dpResult, grResult }) {
+  if (!dpResult || !grResult) return null;
+  return (
+    <div>
+      <div className="section-title">Ad Inventory Table</div>
+      <div className="tbl-card">
+        <div className="tbl-wrap">
+          <table className="inv-table">
+            <thead>
+              <tr><th>#</th><th>Name</th><th>Platform</th><th>Cost</th><th>Engagement</th><th>Value/Cost</th><th>DP</th><th>Greedy</th></tr>
+            </thead>
+            <tbody>
+              {ads.map(ad => {
+                const inDp=dpResult.selected.has(ad.id), inGr=grResult.selected.has(ad.id);
+                const ratio=(ad.engagement/ad.cost).toFixed(1);
+                return (
+                  <tr key={ad.id}>
+                    <td style={{color:'var(--text3)',fontWeight:600}}>{ad.id}</td>
+                    <td style={{fontWeight:500}}>{ad.name}</td>
+                    <td>{ad.platform}</td>
+                    <td>{fmtINR(ad.cost)}</td>
+                    <td>{fmtEng(ad.engagement)} <span style={{color:'var(--text3)',fontSize:10}}>{ad.metric}</span></td>
+                    <td style={{fontFamily:'monospace',color:'var(--text2)'}}>{ratio}</td>
+                    <td><span className={`tbadge ${inDp?'tbadge-dp':'tbadge-no'}`}>{inDp?'Selected':'—'}</span></td>
+                    <td><span className={`tbadge ${inGr?'tbadge-gr':'tbadge-no'}`}>{inGr?'Selected':'—'}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── DP Table ─── */
+function DPTable({ ads, dpResult, budget }) {
+  if (!dpResult) return null;
+  const n=ads.length, W=budget;
+  const step=Math.max(1,Math.floor(W/14));
+  const cols=[];
+  for (let w=0;w<=W;w+=step) cols.push(w);
+  if (cols[cols.length-1]!==W) cols.push(W);
+  const maxRows=Math.min(n+1,13);
+  return (
+    <div>
+      <div className="section-title">DP Table — Sub-problem Grid</div>
+      <div className="dp-note">
+        Rows = ads added one by one · Cols = budget capacity {fmtINR(0)} → {fmtINR(W)} ·&nbsp;
+        <span style={{background:'#EEF0FE',color:'#3730A3',padding:'1px 5px',borderRadius:3,fontWeight:600}}>purple</span> = traceback path ·&nbsp;
+        <span style={{background:'var(--dp-bg)',color:'var(--dp-text)',padding:'1px 5px',borderRadius:3,fontWeight:600}}>green</span> = optimal value
+      </div>
+      <div className="tbl-card">
+        <div className="dp-outer">
+          <table className="dp-table">
+            <thead>
+              <tr>
+                <th className="row-head">Ad \ W</th>
+                {cols.map(w => <th key={w}>{fmtINR(w)}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({length: maxRows}, (_, i) => (
+                <tr key={i}>
+                  <th className="row-head">{i===0 ? '—' : ads[i-1].name}</th>
+                  {cols.map(w => {
+                    const isMax   = (i===n) && dpResult.dp[i][w]===dpResult.maxVal && dpResult.dp[i][w]>0;
+                    const isTrace = dpResult.traceSet.has(`${i}-${w}`);
+                    return <td key={w} className={isMax?'cell-max':isTrace?'cell-trace':''}>{fmtEng(dpResult.dp[i][w])}</td>;
+                  })}
+                </tr>
+              ))}
+              {n > 12 && (
+                <tr>
+                  <td colSpan={cols.length+1} style={{textAlign:'center',color:'var(--text3)',fontStyle:'italic',padding:'8px'}}>
+                    … {n-12} more rows hidden — reduce ads to see full table
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   APP
+   ═══════════════════════════════════════════════════════════════ */
+function App() {
+  const [numAds,  setNumAds]  = useState(10);
+  const [budget,  setBudget]  = useState(350);
+  const [seed,    setSeed]    = useState(42);
+  const [ads,     setAds]     = useState(() => genAds(10, 42));
+  const [baseAds, setBaseAds] = useState(() => genAds(10, 42));
+
+  const dpResult = useMemo(() => ads.length > 0 ? knapsackDP(ads, budget) : null,    [ads, budget]);
+  const grResult = useMemo(() => ads.length > 0 ? knapsackGreedy(ads, budget) : null, [ads, budget]);
+
+  const regenerate = useCallback(() => {
+    const fresh = genAds(numAds, seed);
+    setBaseAds(fresh); setAds(fresh);
+  }, [numAds, seed]);
+
+  const handleAdsChange = useCallback(updated => setAds(updated), []);
+  const handleReset     = useCallback(() => setAds([...baseAds]), [baseAds]);
+
+  return (
+    <div>
+      <Header />
+      <div className="main">
+
+        <div className="section">
+          <Controls numAds={numAds} setNumAds={setNumAds}
+                    budget={budget}  setBudget={setBudget}
+                    seed={seed}      setSeed={setSeed}
+                    onRun={regenerate} />
+        </div>
+
+        <div className="section">
+          <MetricGrid budget={budget} dpResult={dpResult} grResult={grResult} />
+        </div>
+
+        <div className="section">
+          <AlgorithmEfficiency dpResult={dpResult} grResult={grResult} numAds={numAds} budget={budget} />
+        </div>
+
+        <div className="section">
+          <div className="section-title">Selected Ads per Algorithm</div>
+          <CompareCards ads={ads} budget={budget} dpResult={dpResult} grResult={grResult} />
+        </div>
+
+        <AdEditor ads={ads} onAdsChange={handleAdsChange} onReset={handleReset} />
+
+        <div className="section">
+          <BarChart ads={ads} dpResult={dpResult} grResult={grResult} />
+        </div>
+
+        <div className="section two-col">
+          <EngagementChart dpResult={dpResult} grResult={grResult} />
+          <BudgetChart     dpResult={dpResult} grResult={grResult} budget={budget} />
+        </div>
+
+        <div className="section">
+          <InventoryTable ads={ads} dpResult={dpResult} grResult={grResult} />
+        </div>
+
+        <div className="section">
+          <DPTable ads={ads} dpResult={dpResult} budget={budget} />
+        </div>
+
+      </div>
+      <footer className="footer">
+        Ad Budget Optimizer · 0-1 Knapsack — Vaastav B - Pranav
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
