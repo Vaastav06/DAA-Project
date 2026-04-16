@@ -34,13 +34,10 @@ ad-budget-optimizer/
 │   │   │   ├── BudgetChart.jsx
 │   │   │   ├── InventoryTable.jsx
 │   │   │   └── DPTable.jsx
-│   │   ├── utils/
-│   │   │   ├── algorithms.js   ← JS port of knapsack.c
-│   │   │   └── format.js       ← INR & engagement formatters
+│   │   ├── utils     
 │   │   ├── App.jsx
 │   │   ├── App.css
 │   │   └── main.jsx
-│   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
 │
